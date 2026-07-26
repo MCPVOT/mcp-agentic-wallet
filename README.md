@@ -1,6 +1,13 @@
 # MCP Agentic Wallet
 
-> Open-source EIP-2612 Permit-based wallet sessions for AI agents using the Model Context Protocol.
+> **Open-source EIP-2612 Permit-based wallet sessions for AI agents.**
+> The reference implementation for paid MCP servers — verify signatures, manage sessions, settle on-chain. No API keys. No recurring charges.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![viem](https://img.shields.io/badge/viem-4.21.0-blue)](https://viem.sh/)
+[![Base](https://img.shields.io/badge/Base-000000?logo=base&logoColor=white)](https://base.org/)
+[![MCP](https://img.shields.io/badge/MCP-2025--11--25-blueviolet)](https://modelcontextprotocol.io/)
 
 ## What This Is
 
@@ -8,24 +15,7 @@ A human connects their crypto wallet, signs a one-time **EIP-2612 Permit** (gasl
 
 **No API keys. No recurring charges. No per-call wallet signatures.** The permit is the policy.
 
-## How It Works
-
-```
-Human                          Server                        Agent
-  │                              │                              │
-  │── connect wallet ───────────►│                              │
-  │── sign EIP-2612 Permit ─────►│                              │
-  │   (gasless, 1-time)          │── verify signature ────────► │ (on-chain)
-  │                              │── submit permit() ──────────► │ (on-chain, gas)
-  │                              │── create session ──────────┐  │
-  │◄─ return session token ──────│◄──────────────────────────┘  │
-  │                              │                              │
-  │                              │◄── Session-Token header ─────│
-  │                              │── consume budget ───────────┐ │
-  │                              │── transferFrom() ─────────►│ │ (on-chain, gas)
-  │                              │── return tool data ─────────┘ │
-  │                              │◄─────────────────────────────│
-```
+This is the reference implementation used by [mcpvot.xyz](https://mcpvot.xyz) — an x402 payment facilitator for MCP servers. The open-source core (`@mcp-agentic-wallet/core`) is framework-agnostic and works with any MCP server or Next.js app.
 
 ## Quick Start
 
@@ -38,7 +28,7 @@ npm install @mcp-agentic-wallet/core viem
 ### 2. Use in your MCP server
 
 ```typescript
-import { InMemoryStore, verifyPermit, settleCall } from '@mcp-agentic-wallet/core';
+import { InMemoryStore, settleCall } from '@mcp-agentic-wallet/core';
 
 const store = new InMemoryStore();
 
@@ -47,17 +37,16 @@ const token = req.headers.get('Session-Token');
 const session = store.getSession(token);
 if (!session) return new Response('Payment required', { status: 402 });
 
-// Consume budget
-const result = store.consumeBudget(token, 5000n); // $0.005 USDC
+// Consume budget ($0.005 = 5000 atomic USDC units)
+const result = store.consumeBudget(token, 5000n);
 if (!result.ok) return new Response('Insufficient budget', { status: 402 });
 
 // Settle on-chain
 await settleCall(session.humanAddress, 5000n, {
-  treasuryAddress: '0x...',
+  treasuryAddress: process.env.TREASURY_ADDRESS!,
   hotWalletKey: process.env.HOT_WALLET_PRIVATE_KEY,
 });
 
-// Return tool data
 return Response.json({ result: 'your data' });
 ```
 
@@ -73,53 +62,57 @@ npm run dev
 
 Visit `http://localhost:3000/wallet` to connect a wallet and authorize a session.
 
-## Architecture
+## How It Works
 
 ```
-packages/core/          Framework-agnostic library (@mcp-agentic-wallet/core)
-  src/
-    constants.ts        USDC address, EIP-712 domain, ABI snippets
-    types.ts            TypeScript interfaces
-    store.ts            Session store (in-memory + pluggable interface)
-    verify.ts           EIP-2612 Permit signature verification
-    settle.ts           on-chain settlement (permit + transferFrom)
-    index.ts            Public API exports
-
-server/                 Reference Next.js app
-  app/
-    wallet/page.tsx     Generic wallet UI (no branding)
-    api/wallet/
-      authorize/        POST — verify permit, create session
-      session/          GET — query session status
-      sessions/         GET — list sessions (dev)
-      revoke/           POST — revoke session
-
-middleware/             Drop-in MCP middleware
-  withSessionToken.ts  Session-Token header verification
+Human                          Server                        Agent
+  │                              │                              │
+  │── connect wallet ──────────►│                              │
+  │── sign EIP-2612 Permit ───►│                              │
+  │   (gasless, 1-time)           │── verify signature ──────►│ (on-chain)
+  │                              │── submit permit() ────────►│ (on-chain, gas)
+  │                              │── create session ──────────┐│
+  │◄─ return session token ─────│◄───────────────────────────┘│
+  │                              │                              │
+  │                              │◄── Session-Token header ────│
+  │                              │── consume budget ───────────┐│
+  │                              │── transferFrom() ──────────►││ (on-chain, gas)
+  │                              │── return tool data ─────────┘│
+  │                              │◄──────────────────────────────│
 ```
+
+## Core Library (`@mcp-agentic-wallet/core`)
+
+| Class/Function | Description |
+|---|---|
+| `InMemoryStore` | Session store (in-memory, pluggable for KV/Redis) |
+| `verifyPermit()` | Verifies EIP-712 Permit signature on-chain via viem |
+| `settleCall()` | Executes `transferFrom(human, treasury, amount)` on Base |
+| `submitPermit()` | Submits the `permit()` transaction to USDC contract |
+| `checkAllowance()` | Reads on-chain USDC allowance for an owner→spender pair |
+| `checkRateLimit()` | Simple rate limiter (per-wallet) |
+| `toSessionInfo()` | Converts session to safe client-facing info (no permit signature) |
 
 ## Security
 
-See [SECURITY.md](./SECURITY.md) for the full threat model and [docs/SECURITY.md](./docs/SECURITY.md) for attack vectors and mitigations.
+See [SECURITY.md](./SECURITY.md) for the full threat model.
 
-Key points:
+Key features:
 - **EIP-712 signature verification** — server verifies every permit signature on-chain before creating a session
 - **Allowance cap** — max $100 USDC per session (configurable)
 - **Deadline cap** — max 30 days
 - **Rate limiting** — 5 authorizations per wallet per hour
 - **Session revocation** — humans can revoke anytime
 - **Settlement debt tracking** — sessions suspended after 3 failed settlements
+- **Spender verification** — EIP-712 verification inherently checks `spender === treasury`
 
-## Configuration
+## Documentation
 
-| Env Var | Required | Default | Description |
-|---------|----------|---------|-------------|
-| `TREASURY_ADDRESS` | Yes | — | Address that receives USDC payments |
-| `HOT_WALLET_PRIVATE_KEY` | Yes | — | EOA private key for gas (permit + transferFrom) |
-| `BASE_RPC_URL` | No | `https://mainnet.base.org` | Base Mainnet RPC |
-| `NEXT_PUBLIC_TREASURY_ADDRESS` | Yes | — | Treasury address shown in wallet UI |
-
-⚠️ **Never commit private keys to git.** Use environment variables only.
+- **[ARCHITECTURE](./docs/ARCHITECTURE.md)** — system diagram, payment flow, design decisions
+- **[MCP Integration](./docs/MCP-INTEGRATION.md)** — step-by-step guide for adding to any MCP server
+- **[Security Policy](./SECURITY.md)** — threat model, attack vectors, production checklist
+- **[Contributing](./CONTRIBUTING.md)** — dev setup, guidelines, PR process
+- **[Donations](./docs/DONATIONS.md)** — support the project
 
 ## Tech Stack
 
@@ -130,14 +123,15 @@ Key points:
 - **Next.js** — reference server implementation
 - **Model Context Protocol** — MCP 2025-11-25 spec
 
+## Configuration
+
+| Env Var | Required | Default | Description |
+|---------|----------|---------|-------------|
+| `TREASURY_ADDRESS` | Yes | — | Address that receives USDC payments |
+| `HOT_WALLET_PRIVATE_KEY` | Yes | — | EOA private key for gas (never commit to git!) |
+| `BASE_RPC_URL` | No | `https://mainnet.base.org` | Base Mainnet RPC |
+| `NEXT_PUBLIC_TREASURY_ADDRESS` | Yes | — | Treasury shown in wallet UI |
+
 ## License
 
 MIT — see [LICENSE](./LICENSE)
-
-## Donations
-
-If this project helps you build paid MCP tools, consider donating:
-
-- **ETH/Base:** `0x662741340B7c58f3fd30FD4908c6A8c0f9297d25`
-- **BTC:** `bc1qsdkcummkf35ygj0syq0lz9yrnkng7ah8qqwrrk`
-- **SOL:** `58EDJmtnLDoGTxMJ46MP5S933sDbiDUBVXqXV3nsmnV7`
