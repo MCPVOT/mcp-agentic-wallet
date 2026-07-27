@@ -395,12 +395,12 @@ export default function WalletPage() {
         {/* Connect */}
         {!isConnected ? (
           <button onClick={connect} style={btnPrimary} disabled={busy}>
-            {busy ? 'Connecting...' : '🔗 Connect Wallet'}
+            {busy ? '⏳ Connecting...' : '🔗 Connect Wallet'}
           </button>
         ) : (
           <>
             {/* Wallet info */}
-            <div style={{ background: '#1a1a1a', border: '1px solid ' + (chainOk ? '#2a2a3a' : 'rgba(255,80,80,0.3)'), borderRadius: '8px', padding: isMobile ? '0.5rem' : '0.75rem', marginBottom: '1rem', fontSize: '12px', wordBreak: 'break-all' }}>
+            <div style={{ background: '#1a1a1a', border: '1px solid ' + (chainOk ? '#2a2a3a' : 'rgba(255,80,80,0.3)'), borderRadius: '8px', padding: isMobile ? '0.75rem' : '1rem', marginBottom: '1rem', fontSize: '13px', wordBreak: 'break-all' }}>
               <div style={{ color: '#666', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>WALLET <span style={{ color: '#00e5ff' }}>● Base</span></span>
                 {!chainOk && <span style={{ color: '#ef4444', fontSize: '10px' }}>⚠ Wrong network</span>}
