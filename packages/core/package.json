@@ -3,14 +3,40 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Framework-agnostic EIP-2612 Permit-based wallet sessions for AI agents using MCP",
-  "main": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "build": "tsc", "lint": "tsc --noEmit" },
-  "peerDependencies": { "viem": "^2.0.0" },
-  "dependencies": { "viem": "^2.21.0" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "npx tsc",
+    "lint": "npx tsc --noEmit"
+  },
+  "peerDependencies": {
+    "viem": "^2.0.0"
+  },
+  "dependencies": {
+    "viem": "^2.0.0"
+  },
   "license": "MIT",
   "author": "MCPVOT",
   "homepage": "https://github.com/MCPVOT/mcp-agentic-wallet",
-  "repository": { "type": "git", "url": "https://github.com/MCPVOT/mcp-agentic-wallet" },
-  "keywords": ["mcp", "eip-2612", "permit", "usdc", "base", "wallet", "agentic", "ai", "payments"]
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MCPVOT/mcp-agentic-wallet"
+  },
+  "keywords": [
+    "mcp",
+    "eip-2612",
+    "permit",
+    "usdc",
+    "base",
+    "wallet",
+    "agentic",
+    "ai",
+    "payments"
+  ],
+  "devDependencies": {
+    "@types/node": "^26.1.1"
+  }
 }

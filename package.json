@@ -4,7 +4,10 @@
   "type": "module",
   "private": true,
   "description": "Open-source EIP-2612 Permit-based wallet sessions for AI agents using the Model Context Protocol",
-  "workspaces": ["packages/*", "server"],
+  "workspaces": [
+    "packages/*",
+    "server"
+  ],
   "scripts": {
     "dev": "cd server && next dev",
     "build": "npm run build --workspaces",
@@ -13,6 +16,23 @@
   "license": "MIT",
   "author": "MCPVOT",
   "homepage": "https://github.com/MCPVOT/mcp-agentic-wallet",
-  "repository": { "type": "git", "url": "https://github.com/MCPVOT/mcp-agentic-wallet" },
-  "keywords": ["mcp", "eip-2612", "permit", "usdc", "base", "wallet", "agentic", "ai", "payments", "x402"]
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MCPVOT/mcp-agentic-wallet"
+  },
+  "keywords": [
+    "mcp",
+    "eip-2612",
+    "permit",
+    "usdc",
+    "base",
+    "wallet",
+    "agentic",
+    "ai",
+    "payments",
+    "x402"
+  ],
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
 }
