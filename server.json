@@ -11,7 +11,7 @@
     "AI",
     "Payments"
   ],
-  "description": "Open-source EIP-2612 Permit-based wallet sessions for AI agents using MCP.",
+  "description": "Open-source EIP-2612 Permit-based wallet sessions for AI agents using MCP. Powers iRacing blockchain prize pools on Base.",
   "homepage": "https://github.com/MCPVOT/mcp-agentic-wallet",
   "license": "MIT",
   "name": "io.github.MCPVOT/mcp-agentic-wallet",
