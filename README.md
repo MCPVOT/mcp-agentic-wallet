@@ -123,6 +123,18 @@ Key features:
 - **Next.js** — reference server implementation
 - **Model Context Protocol** — MCP 2025-11-25 spec
 
+## Use Case: iRacing + Blockchain
+
+MCPVOT uses this wallet to power **on-chain sim-racing events**:
+
+1. **Host creates event** — deploys an escrow smart contract on Base with entry fee + prize pool
+2. **Drivers connect wallet** — sign EIP-2612 Permit via this library, get a session token
+3. **Drivers pay entry fee** — `transferFrom` settles the entry to the escrow contract
+4. **Race happens in iRacing** — server polls iRacing Data API for finish order
+5. **Smart contract auto-disburses** — verified winners receive USDC/SOL from the prize pool
+
+The iRacing MCP tools (`get_race_results`, `lookup_driver`, `search_hosted_races`) are available at [mcpvot.xyz](https://mcpvot.xyz) and use the same session-token flow for payment.
+
 ## Configuration
 
 | Env Var | Required | Default | Description |

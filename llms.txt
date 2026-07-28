@@ -1,0 +1,109 @@
+# MCP Agentic Wallet — llms.txt
+
+> Open-source EIP-2612 Permit-based wallet sessions for AI agents using the Model Context Protocol (MCP).
+> Reference implementation for paid MCP servers. Verify signatures, manage sessions, settle on-chain via USDC on Base.
+
+- Repository: https://github.com/MCPVOT/mcp-agentic-wallet
+- License: MIT
+- NPM: `@mcp-agentic-wallet/core`
+- MCP Registry: `io.github.MCPVOT/mcp-agentic-wallet`
+- Production user: https://mcpvot.xyz
+
+## What this is (one paragraph)
+
+A framework-agnostic TypeScript library that lets any MCP server accept **gasless, EIP-2612 Permit-based** payments from a human's wallet, mint a session token the agent uses in headers, and settle each tool call on-chain via `transferFrom` (USDC on Base Mainnet). The human signs ONE permit (max $100 USDC, max 30 days); the agent uses the resulting session token for thousands of paid MCP calls without re-prompting the human. No API keys, no recurring charges.
+
+## For AI agents / MCP clients
+
+Add this server to your MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "mcp-agentic-wallet": {
+      "url": "https://mcpvot.xyz/api/mcp",
+      "headers": { "Session-Token": "maw_<your-token>" }
+    }
+  }
+}
+```
+
+Get a session token: a human visits https://mcpvot.xyz/wallet, connects any EIP-1193 wallet (MetaMask, Coinbase, Brave, Binance Chain, Trust, WalletConnect, Rainbow), signs an EIP-2612 Permit, and copies the token. Full agent flow: see `/docs/AGENT-FLOW.md`.
+
+## Library API (`@mcp-agentic-wallet/core`)
+
+| Export | Purpose |
+| --- | --- |
+| `InMemoryStore` | Pluggable session store (KV/Redis in prod) |
+| `verifyPermit(params)` | Verifies EIP-712 Permit signature on-chain (viem) |
+| `submitPermit(params, config)` | Submits `permit()` tx to USDC contract |
+| `settleCall(human, amount, config)` | Calls `transferFrom(human, treasury, amount)` |
+| `checkAllowance(owner, spender, rpc?)` | Reads on-chain USDC allowance |
+| `checkRateLimit(wallet)` | Per-wallet rate limit (5/hr) |
+| `toSessionInfo(session)` | Safe client-facing session projection |
+
+## Types (TS)
+
+```ts
+interface WalletSession {
+  sessionToken: string;
+  humanAddress: string;        // 42-char hex, lowercase
+  allowance: bigint;           // USDC atomic units (1 USDC = 1_000_000)
+  used: bigint;
+  deadline: number;            // unix seconds
+  label: string;
+  permit: PermitData;
+  suspended: boolean;
+  settlementFailures: number;
+}
+
+interface ConsumeResult { ok: boolean; remaining: bigint; reason?: string; }
+interface SettlementResult { ok: boolean; txHash?: `0x${string}`; error?: string; }
+```
+
+## Key constants
+
+- Base Mainnet chain ID: `8453`
+- USDC contract: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
+- 1 USDC atomic = `1_000_000n` (6 decimals)
+- EIP-712 domain: `{ name: "USD Coin", version: "2", chainId: 8453, verifyingContract: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" }`
+
+## Files in this repo
+
+- `packages/core/` — framework-agnostic library (`@mcp-agentic-wallet/core`)
+- `server/` — Next.js reference implementation (wallet UI + API routes)
+- `docs/ARCHITECTURE.md` — system design + payment flow diagrams
+- `docs/MCP-INTEGRATION.md` — adding this to your MCP server (5 min)
+- `docs/AGENT-FLOW.md` — end-to-end agent flow
+- `SECURITY.md` — threat model
+- `server.json` — MCP Registry metadata
+- `agents.json` — agent-readable project metadata (A2A)
+- `.well-known/mcp.json` — well-known MCP discovery file
+
+## Use Case: iRacing + Blockchain (Sim-Racing Prize Pools)
+
+MCPVOT uses this wallet library to power **on-chain sim-racing events** — the first integration of iRacing Data API with blockchain prize escrow:
+
+1. **Host creates event** — deploys an escrow smart contract on Base with entry fee + prize pool
+2. **Drivers connect wallet** — sign EIP-2612 Permit via this library, get a session token (gasless, 1-time)
+3. **Drivers pay entry fee** — `transferFrom` settles the entry to the escrow contract
+4. **Race happens in iRacing** — server polls iRacing Data API (`/data/results/get`) for finish order
+5. **Smart contract auto-disburses** — verified winners receive USDC from the prize pool
+
+Three iRacing MCP tools are live at `mcpvot.xyz` using this session-token payment flow:
+- `get_race_results` ($0.02) — full race results, finish order, laps, incidents, iRating changes
+- `lookup_driver` ($0.01) — driver profile, iRating, license class, career stats
+- `search_hosted_races` ($0.02) — search hosted races by date range, driver, or session name
+
+## Security defaults
+
+- Max allowance: **$100 USDC per session**
+- Max deadline: **30 days**
+- Rate limit: **5 authorizations / wallet / hour**
+- Auto-suspend: **after 3 failed settlements**
+- EIP-712 signature verification on every permit
+- Human can revoke anytime via `/api/wallet/revoke`
+
+## Tags
+
+`mcp`, `eip-2612`, `permit`, `eip-712`, `usdc`, `base`, `wallet`, `agentic`, `ai-agents`, `payments`, `x402`, `micropayments`, `sessions`, `oauth-alternative`, `open-source`, `iracing`, `sim-racing`, `prize-pool`, `escrow`
